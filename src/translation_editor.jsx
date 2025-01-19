@@ -9,7 +9,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Settings, FileDown, FileUp, AlertCircle, Copy, Check } from 'lucide-react';
+import { Settings, FileDown, FileUp, AlertCircle, Copy, Check, Plus, Trash2, GripVertical } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 // import { toast } from '@/components/ui/use-toast';
 
@@ -84,6 +84,66 @@ const TranslationEditor = () => {
     });
   };
 
+  const handleAddItem = (path) => {
+    setData(prevData => {
+      const newKey = 'new_key';
+      let suffix = 1;
+      const currentScope = getValueByPath(prevData, path);
+      
+      // Find unique key name
+      while (currentScope && currentScope[`${newKey}${suffix}`]) {
+        suffix++;
+      }
+      
+      return setValueByPath(
+        prevData,
+        [...path, `${newKey}${suffix}`],
+        'New Value'
+      );
+    });
+  };
+
+  const handleAddScope = (path) => {
+    setData(prevData => {
+      const newKey = 'new_scope';
+      let suffix = 1;
+      const currentScope = getValueByPath(prevData, path);
+      
+      // Find unique key name
+      while (currentScope && currentScope[`${newKey}${suffix}`]) {
+        suffix++;
+      }
+      
+      return setValueByPath(
+        prevData,
+        [...path, `${newKey}${suffix}`],
+        {}
+      );
+    });
+  };
+
+  const handleDelete = (path) => {
+    setData(prevData => deleteByPath(prevData, path));
+    toast({
+      title: "Item deleted",
+      description: `Deleted ${path.join('.')}`,
+    });
+  };
+
+  const handleKeyChange = (path, newKey) => {
+    setData(prevData => {
+      const parentPath = path.slice(0, -1);
+      const oldKey = path[path.length - 1];
+      const value = getValueByPath(prevData, path);
+      
+      let newData = deleteByPath(prevData, path);
+      newData = setValueByPath(newData, [...parentPath, newKey], value);
+      
+      return newData;
+    });
+  };
+
+
   const copyScope = (path) => {
     const scopeData = getValueByPath(data, path);
     const pathStr = path.join('.');
@@ -120,13 +180,22 @@ const TranslationEditor = () => {
           key={pathString}
           className="pl-4 border-l border-gray-200 dark:border-gray-700"
           style={{ marginLeft: `${level * 16}px` }}
-          draggable={!isScope}
+          draggable
           onDragStart={(e) => handleDragStart(e, currentPath, value)}
           onDragOver={(e) => handleDragOver(e, currentPath)}
           onDrop={(e) => handleDrop(e, currentPath)}
         >
           <div className={`flex items-center gap-2 p-2 ${isScope ? 'bg-gray-50 dark:bg-gray-900' : 'hover:bg-gray-100 dark:hover:bg-gray-800'} rounded group`}>
-            <span className="font-medium">{key}:</span>
+            <GripVertical className="w-4 h-4 text-gray-400 cursor-grab" />
+            
+            <input
+              type="text"
+              value={key}
+              onChange={(e) => handleKeyChange(currentPath, e.target.value)}
+              className="font-medium bg-transparent border-none px-1 focus:ring-1 ring-blue-500 rounded"
+            />
+            <span className="font-medium">:</span>
+            
             {typeof value === 'string' ? (
               <input
                 type="text"
@@ -137,22 +206,48 @@ const TranslationEditor = () => {
                 className="flex-1 px-2 py-1 rounded border border-gray-300 dark:border-gray-600"
               />
             ) : (
-              <>
-                <div className="flex-1" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => copyScope(currentPath)}
-                >
-                  {copiedPaths.has(pathString) ? (
-                    <Check className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
-              </>
+              <div className="flex-1" />
             )}
+
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+              {isScope ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyScope(currentPath)}
+                  >
+                    {copiedPaths.has(pathString) ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleAddItem(currentPath)}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleAddScope(currentPath)}
+                  >
+                    <Plus className="w-4 h-4" />Scope
+                  </Button>
+                </>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDelete(currentPath)}
+                className="hover:text-red-500"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
           {isScope && renderTree(value, currentPath, level + 1)}
         </div>
@@ -324,21 +419,50 @@ const TranslationEditor = () => {
           </div>
         </div>
         
-        {duplicates.length > 0 && (
-          <Alert variant="warning" className="mb-4">
-            <AlertCircle className="w-4 h-4" />
-            <AlertDescription>
-              Found {duplicates.length} duplicate translations
-            </AlertDescription>
-          </Alert>
-        )}
-        
         <div className="border rounded-lg">
           {Object.keys(data).length > 0 ? (
-            renderTree(data)
+            <div>
+              {renderTree(data)}
+              <div className="p-4 border-t flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddItem([])}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddScope([])}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Scope
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="p-8 text-center text-gray-500">
-              Import a translation file or start adding translations
+              <p className="mb-4">Import a translation file or start adding translations</p>
+              <div className="flex gap-2 justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddItem([])}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAddScope([])}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Scope
+                </Button>
+              </div>
             </div>
           )}
         </div>
