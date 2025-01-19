@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/src/lib/*": ["src/lib/*"],
+      "@/src/lib/utils": ["src/lib/utils.js"],
+      "@/components/ui/*": ["src/components/ui/*"],
+      "@/hooks/*": ["src/hooks/*"]
+    },
+    "alias": {
+      "@/src/lib/*": ["src/lib/*"],
+      "@/src/lib/utils": ["src/lib/utils"],
+      "@/components/ui/*": ["src/components/ui/*"],
+      "@/hooks/*": ["src/hooks/*"]
+    }
+  },
+  "include": ["src"]
+}
